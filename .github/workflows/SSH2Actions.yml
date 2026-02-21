@@ -39,10 +39,9 @@ jobs:
       - name: Start tmate session (SSH debug)
         uses: mxschmitt/action-tmate@v3
         if: (github.event.inputs.SSH == 'true' && github.event.inputs.SSH  != 'false') || contains(github.event.action, 'SSH')
-        env:
-          TMATE_SERVER: tmate.ssh.nz # 替换为其他 tmate 服务器
         with:
-          timeout-min: ${{ github.event.inputs.timeout_min }}
+          tmate-server-host: ssh.tmate.io # 替换为其他 tmate 服务器
+          # timeout-min: ${{ github.event.inputs.timeout_min }}
 
       - name: Check outputs folder
         id: check_outputs
