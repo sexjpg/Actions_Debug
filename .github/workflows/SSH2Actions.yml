@@ -10,7 +10,7 @@ on:
       python_version:
         description: "Python版本"
         required: true
-        default: "3.8"
+        default: "3.13"
       timeout_min:
         description: "SSH超时时间(分钟)"
         required: true
@@ -25,14 +25,22 @@ jobs:
     runs-on: ubuntu-latest
     name: Setup Python ${{ github.event.inputs.python_version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@main
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ github.event.inputs.python_version }}
+
+      - name: Initialization
+        run: |
+          echo ${{ github.event.inputs.python_version }}
+          # chmod +x init*.sh
+          # source initpy.sh
 
       - name: Start tmate session (SSH debug)
         uses: mxschmitt/action-tmate@v3
         if: (github.event.inputs.SSH == 'true' && github.event.inputs.SSH  != 'false') || contains(github.event.action, 'SSH')
+        env:
+          TMATE_SERVER: tmate.ssh.nz # 替换为其他 tmate 服务器
         with:
           timeout-min: ${{ github.event.inputs.timeout_min }}
 
