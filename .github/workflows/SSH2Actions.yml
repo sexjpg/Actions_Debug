@@ -19,13 +19,21 @@ on:
         description: "Artifact保留天数"
         required: true
         default: "30"
+      outputs_dir:
+        description: "Outputs 文件夹路径"
+        required: true
+        default: "outputs"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     name: Setup Python ${{ github.event.inputs.python_version }}
+    env:
+      OUTPUTS_DIR: ${{ github.event.inputs.outputs_dir }}
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ github.event.inputs.python_version }}
@@ -46,23 +54,36 @@ jobs:
       - name: Check outputs folder
         id: check_outputs
         run: |
-          if [ -d "outputs" ] && [ "$(ls -A outputs)" ]; then
+          if [ -d "$OUTPUTS_DIR" ] && [ "$(ls -A \"$OUTPUTS_DIR\")" ]; then
             echo "folder_not_empty=true" >> $GITHUB_OUTPUT
-            echo "outputs 文件夹不为空，将执行打包上传"
+            echo "$OUTPUTS_DIR 文件夹不为空，将执行打包上传"
           else
             echo "folder_not_empty=false" >> $GITHUB_OUTPUT
-            echo "outputs 文件夹为空，跳过打包上传"
+            echo "$OUTPUTS_DIR 文件夹为空，跳过打包上传"
           fi
 
       - name: Zip outputs folder
         if: steps.check_outputs.outputs.folder_not_empty == 'true'
         run: |
-          zip -r outputs.zip outputs/
+          zip -r "${OUTPUTS_DIR}.zip" "$OUTPUTS_DIR"/
 
       - name: Upload to GitHub Artifacts
         if: steps.check_outputs.outputs.folder_not_empty == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: outputs
-          path: outputs.zip
+          name: ${{ env.OUTPUTS_DIR }}.zip
+          path: ${{ env.OUTPUTS_DIR }}.zip
           retention-days: ${{ github.event.inputs.retention_days }}
+
+      - name: Commit outputs to repository
+        if: steps.check_outputs.outputs.folder_not_empty == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$OUTPUTS_DIR"
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync $OUTPUTS_DIR from workflow run ${{ github.run_id }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi
